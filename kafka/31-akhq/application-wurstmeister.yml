@@ -1,0 +1,21 @@
+
+
+micronaut:
+  server:
+    port: 38080
+
+logger:
+  levels:
+    root: DEBUG
+
+akhq:
+  connections:
+
+    plaintext:
+      properties:
+        bootstrap.servers: "localhost:32481"
+        security.protocol: PLAINTEXT
+        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="geting" password="geting";
+
+
+

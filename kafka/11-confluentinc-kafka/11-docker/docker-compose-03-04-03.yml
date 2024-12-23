@@ -1,0 +1,237 @@
+# 
+# #cd ~/dev-project/21-confluentinc-kafka && docker-compose -f docker-compose-03-04-03.yml up -d
+# cd ~/dev-project/21-confluentinc-kafka
+# docker-compose -f docker-compose-03-04-03.yml rm -fsv && docker-compose -f docker-compose-03-04-03.yml up -d
+# 
+# docker-compose.yml
+# 
+# Only can use `PLAINTTEXT` and `SSL`, they are the MUST.
+# Cannot use self-defined names, like `INTERNAL`.
+# Using other ports are not working too.
+# 
+# 
+# SASL_SSL
+# truststore.jks
+# ../../01-ssl-certificate/server.truststore.jks
+# kafkapwd
+# 
+# keystore.jks
+# ../../01-ssl-certificate/server.keystore.jks
+# kafkapwd
+# 
+# 
+version: '3.8'
+
+services:
+  # 
+  # Reference:
+  # https://github.com/hussein-joe/kafka-security-ssl-sasl/blob/master/sasl-scram/docker-compose-scram.yml
+  # 
+  zookeeper-add-kafka-users:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: zookeeper-add-kafka-users
+    depends_on:
+      zookeeper-03-04-03:
+        condition: service_started
+    command: "bash -c 'sleep 5 && \ 
+              cub zk-ready zookeeper-x01:2181 100 && \
+              cub zk-ready zookeeper-x01:2181 100 && \
+              kafka-configs --zookeeper zookeeper-x01:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password=ben1-secret]' --entity-type users --entity-name ben1 && \
+              kafka-configs --zookeeper zookeeper-x01:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password=sam1-secret]' --entity-type users --entity-name sam1 \
+            '"
+    volumes:
+      # # - "${KAFKA_DATA}/03-04-03-kafka-config/zookeeper-log4j.properties:/etc/kafka/config/zookeeper-log4j.properties"
+      # - "${KAFKA_DATA}/03-04-03-kafka-config:/etc/kafka/config"
+      - "../01-config/11-kafka:/etc/kafka/config"
+    environment:
+      KAFKA_BROKER_ID: ignored
+      KAFKA_ZOOKEEPER_CONNECT: ignored
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/kafka_server_jaas.conf"
+      # KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/kafka_server_jaas.conf
+      #              -Dlog4j.configuration=/etc/kafka/config/zookeeper-log4j.properties
+      #             "
+      # # JAVA_OPTS: "-Dlog4j.configuration=/etc/kafka/config/zookeeper-log4j.properties"
+  zookeeper-03-04-03:
+    image: confluentinc/cp-zookeeper:7.5.3
+    hostname: zookeeper-x01
+    ports:
+      - "32481:2181"
+    volumes:
+      # - "${KAFKA_DATA}/03-04-03-zookeeper-config:/etc/kafka/config"
+      - "../01-config/01-zookeeper:/etc/kafka/config"
+    environment:
+      # ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: DEBUG
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_AUTH_PROVIDER_SASL: org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+      ZOOKEEPER_REQUIRE_CLIENT_AUTH_SCHEME: sasl
+      # ZOOKEEPER_AUTHPROVIDER.1: org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+      # ZOOKEEPER_JAAS_LOGIN_RENEW: 3600000
+      # quorum.auth.enableSasl=true
+      # quorum.auth.learnerRequireSasl=true
+      # quorum.auth.serverRequireSasl=true
+      ZOOKEEPER_QUORUM_AUTH_ENABLE_SASL: 'true'
+      ZOOKEEPER_QUORUM_AUTH_LEARNER_REQUIRE_SASL: 'true'
+      ZOOKEEPER_QUORUM_AUTH_SERVER_REQUIRE_SASL: 'true'
+      # ZOOKEEPER_SSLA.CELENG: true
+      # # ZOOKEEPER_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/zookeeper_server_jaas.conf"
+      # KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/zookeeper_server_jaas.conf
+      #              -Dzookeeper.4lw.commands.whitelist=ruok
+      #             "
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/zookeeper_server_jaas.conf"
+    # healthcheck:
+    #   # # test: ['CMD-SHELL','cub zk-ready zookeeper-x01:2181 120']
+    #   # test: cub zk-ready zookeeper-x01:2181 100
+    #   # 
+    #   # https://github.com/confluentinc/cp-docker-images/issues/358#issuecomment-1087852715
+    #   # "ruok" is required to add to zookeeper.4lw.commands.whitelist
+    #   test: ['CMD-SHELL','echo "ruok" | nc -w 2 127.0.0.1 2181 | grep imok']
+    #   interval: 3s
+    #   retries: 2
+    #   start_period: 3s
+    #   timeout: 3s
+  kafka-03-04-03:
+    image: confluentinc/cp-kafka:7.5.3
+    hostname: kafka-x01
+    depends_on:
+      zookeeper-03-04-03:
+        # condition: service_healthy
+        condition: service_started
+        # # condition: service_completed_successfully
+        # restart: true
+    # command: "bash -c 'echo Waiting for Zookeeper to be ready... && \
+    #           cub zk-ready zookeeper-x01:2181 120 && \
+    #           cub zk-ready zookeeper-x01:2181 120 && \
+    #           kafka-configs --zookeeper zookeeper-x01:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password=admin1-secret]' --entity-type users --entity-name admin1 && \
+    #           kafka-configs --zookeeper zookeeper-x01:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password=admin3-secret]' --entity-type users --entity-name admin3 && \
+    #           kafka-configs --zookeeper zookeeper-x01:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password=alice-secret]' --entity-type users --entity-name alice \
+    #           '"
+    ports:
+#      - "9092:9092"
+      - "9093:9093"
+      - "9094:9094"
+      - "9095:9095"
+      # - "39493:9093"
+      # - "39494:9094"
+      # - "39495:9095"
+    volumes:
+      # # - "${KAFKA_DATA}/03-04-00-kafka-cert:/etc/kafka/secrets:ro"
+      # - "${KAFKA_DATA}/03-04-03-kafka-cert:/etc/kafka/secrets:ro"
+      # - "${KAFKA_DATA}/03-04-03-kafka-config:/etc/kafka/config"
+      - "../../01-ssl-certificate:/etc/kafka/secrets:ro"
+      - "../01-config/11-kafka:/etc/kafka/config"
+    environment:
+      # https://doc.confluent.io/platform/current/installtion/docker/operations/logging.html
+      # KAFKA_LOG4J_ROOT_LOGLEVEL: DEBUG
+      # KAFKA_LOG4J_TOOLS_LOGLEVEL: DEBUG
+      # KAFKA_LOG4J_LOGGERS: 'kafka=DEBUG,kafka.controller=DEBUG'
+
+      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_RACK: 'r1'
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper-x01:2181'
+      # KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181/kafka'
+      # ZOOKEEPER_SASL_ENABLE: 'false'
+      # KAFKA_ZOOKEEPER_SSL_CLIENT_ENABLE: 'true'
+
+      # KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+
+      # # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL
+      # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CLEAR:PLAINTEXT,SSL:SSL,INTERNAL:SASL_PLAINTEXT,EXTERNAL:SASL_SSL,DOCKER:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CLEAR:PLAINTEXT,SSL:SSL,INTERNAL:SASL_PLAINTEXT,EXTERNAL:SASL_SSL
+
+      # KAFKA_LISTENERS: PLAINTEXT://:9092,SSL://:9093,SASL_PLAINTEXT://:9094,SASL_SSL://:9095
+      # KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,SSL://0.0.0.0:9093,SASL_PLAINTEXT://0.0.0.0:9094,SASL_SSL://0.0.0.0:9095
+      KAFKA_LISTENERS: CLEAR://0.0.0.0:9092,SSL://0.0.0.0:9093,INTERNAL://0.0.0.0:9094,EXTERNAL://0.0.0.0:9095
+
+      # # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      # KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SASL_PLAINTEXT
+      # KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # KAFKA_INTER_BROKER_LISTENER_NAME: SASL_SSL
+      # KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # KAFKA_INTER_BROKER_PROTOCOL: SASL_SSL
+
+      # KRaft mode only
+      # KAFKA_CONTROLLER_LISTENER_NAMES: EXTERNAL
+
+      # # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,SSL://localhost:9093,SASL_PLAINTEXT://localhost:9094,SASL_SSL://localhost:9095
+      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://1.1.1.1:9092,SSL://1.1.1.1:9093,SASL_PLAINTEXT://1.1.1.1:9094,SASL_SSL://1.1.1.1:9095
+      # # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,SSL://localhost:39493
+      # KAFKA_ADVERTISED_LISTENERS: CLEAR://kafka-x01:9092,SSL://kafka-x01:9093,INTERNAL://kafka-x01:9094,EXTERNAL://kafka-x01:9095
+      # KAFKA_ADVERTISED_LISTENERS: CLEAR://kafka-x01:9092,SSL://kafka-x01:9093,INTERNAL://kafka-x01:9094,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9095,DOCKER://host.docker.internal:9095
+      # KAFKA_ADVERTISED_LISTENERS: CLEAR://kafka-x01:9092,SSL://kafka-x01:9093,INTERNAL://kafka-x01:9094,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9095
+      # # KAFKA_ADVERTISED_LISTENERS: CLEAR://1.1.1.1:9092,SSL://1.1.1.1:9093,INTERNAL://1.1.1.1:9094,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9095
+      KAFKA_ADVERTISED_LISTENERS: CLEAR://${DOCKER_HOST_IP:-127.0.0.1}:9092,SSL://${DOCKER_HOST_IP:-127.0.0.1}:9093,INTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9094,EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9095
+
+      # KAFKA_SECURITY_PROTOCOL: SSL
+      # KAFKA_SECURITY_PROTOCOL: SASL_SSL
+
+      # KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN,SCRAM-SHA-256
+
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      # KAFKA_SASL_MECHANISMS: SCRAM-SHA-256
+
+      # KAFKA_LISTENER_NAME_INTERNAL_SASL_ENABLED_MECHANISMS: PLAIN
+      # KAFKA_LISTENER_NAME_EXTERNAL_SASL_ENABLED_MECHANISMS: SCRAM-SHA-256
+      # KAFKA_LISTENER_NAME_EXTERNAL_SASL_MECHANISM: SCRAM-SHA-256
+      KAFKA_SASL_MECHANISM_CONTROLLER_PROTOCOL: SCRAM-SHA-256
+
+      KAFKA_SSL_KEYSTORE_FILENAME: server.keystore.jks
+      # KAFKA_SSL_KEYSTORE_PASSWORD: "kafkapwd"
+      # KAFKA_SSL_KEY_PASSWORD: "kafkapwd"
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: ssl_cert.creds
+      KAFKA_SSL_KEY_CREDENTIALS: ssl_cert.creds
+
+      KAFKA_SSL_TRUSTSTORE_FILENAME: server.truststore.jks
+      # KAFKA_SSL_TRUSTSTORE_PASSWORD: "kafkapwd"
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: ssl_cert.creds
+
+      # certificates in 03-04-00-kafka-cert are working
+      # KAFKA_SSL_KEYSTORE_FILENAME: kafka-03-04.keystore.jks
+      # KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka-03-04.creds
+      # KAFKA_SSL_KEY_CREDENTIALS: kafka-03-04.creds
+
+      # KAFKA_SSL_TRUSTSTORE_FILENAME: kafka-03-04.truststore.jks
+      # KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka-03-04.creds
+
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+      KAFKA_SSL_CLIENT_AUTH: "required"
+
+      # KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      # KAFKA_SUPER_USERS: User:admin;User:producer
+
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/kafka_server_jaas.conf"
+
+
+# cub zk-ready zookeeper-x01:2181 120
+# kafka-configs --zookeeper zookeeper-x01:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password=admin1-secret]' --entity-type users --entity-name admin1
+# kafka-configs --zookeeper zookeeper-x01:2181 --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password=admin3-secret]' --entity-type users --entity-name admin3
+
+# [2024-10-17 08:06:37,049] INFO [KafkaServer id=1] started (kafka.server.KafkaServer)
+# [2024-10-17 08:06:37,077] DEBUG [zk-broker-1-to-controller-alter-partition-channel-manager]: Controller isn't cached, looking for local metadata changes (kafka.server.BrokerToControllerRequestThread)
+# [2024-10-17 08:06:37,077] DEBUG [zk-broker-1-to-controller-alter-partition-channel-manager]: No controller provided, retrying after backoff (kafka.server.BrokerToControllerRequestThread)
+# [2024-10-17 08:06:37,150] DEBUG [zk-broker-1-to-controller-forwarding-channel-manager]: Controller isn't cached, looking for local metadata changes (kafka.server.BrokerToControllerRequestThread)
+
+# [2024-10-17 07:56:12,631] DEBUG [zk-broker-1-to-controller-alter-partition-channel-manager]: No controller provided, retrying after backoff (kafka.server.BrokerToControllerRequestThread)
+# [2024-10-17 07:56:12,682] DEBUG [zk-broker-1-to-controller-forwarding-channel-manager]: Controller isn't cached, looking for local metadata changes (kafka.server.BrokerToControllerRequestThread)
+
+
+# [2024-10-17 04:25:37,850] DEBUG ClientCnxn:sendSaslPacket:length=0 (org.apache.zookeeper.client.ZooKeeperSaslClient)
+# [2024-10-17 04:25:37,854] ERROR SASL authentication failed using login context 'Client'. (org.apache.zookeeper.client.ZooKeeperSaslClient)
+# javax.security.sasl.SaslException: Error in authenticating with a Zookeeper Quorum member: the quorum member's saslToken is null.
+#         at org.apache.zookeeper.client.ZooKeeperSaslClient.createSaslToken(ZooKeeperSaslClient.java:310)
+#         at org.apache.zookeeper.client.ZooKeeperSaslClient.respondToServer(ZooKeeperSaslClient.java:270)
+#         at org.apache.zookeeper.ClientCnxn$SendThread.readResponse(ClientCnxn.java:934)
+#         at org.apache.zookeeper.ClientCnxnSocketNIO.doIO(ClientCnxnSocketNIO.java:98)
+#         at org.apache.zookeeper.ClientCnxnSocketNIO.doTransport(ClientCnxnSocketNIO.java:350)
+#         at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1289)
+# [2024-10-17 04:25:37,855] INFO EventThread shut down for session: 0x1000016635a0000 (org.apache.zookeeper.ClientCnxn)
+# [2024-10-17 04:25:37,855] ERROR Error occurred while connecting to Zookeeper server[zookeeper-x01:2181]. Authentication failed.  (io.confluent.admin.utils.ClusterStatus)
+# [2024-10-17 04:25:37,855] DEBUG Close called on already closed client (org.apache.zookeeper.ZooKeeper)
+
+
+
+

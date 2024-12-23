@@ -1,0 +1,73 @@
+# 
+# #cd ~/dev-project/21-wurstmeister-kafka && docker-compose -f docker-compose-04-41-04.yml up -d
+# cd ~/dev-project/21-wurstmeister-kafka
+# docker-compose -f docker-compose-04-41-04.yml rm -fsv && docker-compose -f docker-compose-04-41-04.yml up -d
+# 
+# https://www.sasaba.net/posts/2021/kafka_cluster/
+# 
+
+version: '3.5'
+# version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    container_name: zookeeper
+    # restart: always
+    ports:
+      # - 32481:2181
+      - 2181:2181
+    volumes:
+      - "../01-config/01-zookeeper:/etc/kafka/config"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_MAXCLIENTCNXNS: 0
+      ZOOKEEPER_AUTHPROVIDER.1: org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+      # ZOOKEEPER_AUTH_PROVIDER_SASL: org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+      # ZOOKEEPER_REQUIRECLIENTAUTHSCHEME: sasl
+      ZOOKEEPER_REQUIRE_CLIENT_AUTH_SCHEME: sasl
+
+      ZOOKEEPER_QUORUM_AUTH_ENABLE_SASL: 'true'
+      ZOOKEEPER_QUORUM_AUTH_LEARNER_REQUIRE_SASL: 'true'
+      ZOOKEEPER_QUORUM_AUTH_SERVER_REQUIRE_SASL: 'true'
+
+      # ZOOKEEPER_JAASLOGINRENEW: 3600000
+      ZOOKEEPER_JAAS_LOGIN_RENEW: 3600000
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/zookeeper_server_jaas_sasl_plaintext.conf"
+      # ZOOKEEPER_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/zookeeper_server_jaas_sasl_plaintext.conf"
+      KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=DEBUG,kafka.controller=DEBUG"
+      KAFKA_LOG4J_ROOT_LOGLEVEL: "INFO"
+      KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=DEBUG,kafka.controller=DEBUG,org.apache.zookeeper=DEBUG"
+      KAFKA_LOG4J_ROOT_LOGLEVEL: "INFO"
+
+  kafka1:
+    image: wurstmeister/kafka:2.13-2.8.1
+    container_name: kafka1
+    # restart: always
+    depends_on:
+      - zookeeper
+    ports:
+      # - 39492:9092
+      - 9092:9092
+    volumes:
+      # - "${KAFKA_DATA}/41-04-kafka-cert:/etc/kafka/secrets:ro"
+      - "../01-config/11-kafka:/etc/kafka/config"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: SASL_PLAINTEXT://0.0.0.0:9092
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      # KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/config/kafka_server_jaas_sasl_plaintext.conf"
+      # 超级用户对应KafkaServer里面的用户可以多个User:geting;User:alice
+      KAFKA_SUPER_USERS: User:broker1
+
+      KAFKA_LOG4J_LOGGERS: "kafka.authorizer.logger=DEBUG,kafka.controller=DEBUG,org.apache.zookeeper=DEBUG"
+      KAFKA_LOG4J_ROOT_LOGLEVEL: "INFO"
+
+
