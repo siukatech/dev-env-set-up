@@ -1,0 +1,94 @@
+
+
+micronaut:
+  server:
+    port: 38080
+
+logger:
+  levels:
+    root: DEBUG
+
+akhq:
+  connections:
+
+    ssl_not_require_jaas:
+      properties:
+        bootstrap.servers: "localhost:9093"
+        # security.protocol: PLAINTEXT
+        security.protocol: SSL
+        # # sasl.mechanism: SCRAM-SHA-256
+        # sasl.mechanism: PLAIN
+        # # # sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="admin1" password="admin1-secret";
+        # sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="alice" password="alice-secret";
+        # # sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="peter" password="peter-secret";
+        ssl.endpoint.identification.algorithm: ""
+        #
+        # "~/dev-artifact" symbolic link does not work
+        # 
+        ### ssl.truststore.location: "~/dev-artifact/kafka/03-04-00-kafka-cert/kafka-03-04.truststore.jks"
+        ssl.truststore.location: "../01-ssl-certificate/server.truststore.jks"
+        ssl.truststore.password: "kafkapwd"
+        ssl.keystore.location: "../01-ssl-certificate/server.keystore.jks"
+        ssl.keystore.password: "kafkapwd"
+        ssl.key.password: "kafkapwd"
+
+    sasl_plain:
+      properties:
+        bootstrap.servers: "localhost:9094"
+        # security.protocol: PLAINTEXT
+        security.protocol: SASL_PLAINTEXT
+        # sasl.mechanism: SCRAM-SHA-256
+        sasl.mechanism: PLAIN
+        # sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="admin1" password="admin1-secret";
+        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="peter" password="peter-secret";
+        # sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="alice" password="alice-secret";
+        ssl.endpoint.identification.algorithm: ""
+        ssl.truststore.location: "../01-ssl-certificate/server.truststore.jks"
+        ssl.truststore.password: "kafkapwd"
+        ssl.keystore.location: "../01-ssl-certificate/server.keystore.jks"
+        ssl.keystore.password: "kafkapwd"
+        ssl.key.password: "kafkapwd"
+
+    sasl_ssl_sam1:
+      properties:
+        bootstrap.servers: "localhost:9095"
+        security.protocol: SASL_SSL
+        sasl.mechanism: SCRAM-SHA-256
+        # # sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="admin1" password="admin1-secret";
+        # sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="admin3" password="admin3-secret";
+        sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="sam1" password="sam1-secret";
+        ssl.endpoint.identification.algorithm: ""
+        ssl.truststore.location: "../01-ssl-certificate/server.truststore.jks"
+        ssl.truststore.password: "kafkapwd"
+        ssl.keystore.location: "../01-ssl-certificate/server.keystore.jks"
+        ssl.keystore.password: "kafkapwd"
+        ssl.key.password: "kafkapwd"
+
+    sasl_ssl_ben1:
+      properties:
+        bootstrap.servers: "localhost:9095"
+        security.protocol: SASL_SSL
+        sasl.mechanism: SCRAM-SHA-256
+        sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="ben1" password="ben1-secret";
+        ssl.endpoint.identification.algorithm: ""
+        ssl.truststore.location: "../01-ssl-certificate/server.truststore.jks"
+        ssl.truststore.password: "kafkapwd"
+        ssl.keystore.location: "../01-ssl-certificate/server.keystore.jks"
+        ssl.keystore.password: "kafkapwd"
+        ssl.key.password: "kafkapwd"
+
+    sasl_ssl_ivan1:
+      properties:
+        bootstrap.servers: "localhost:9095"
+        security.protocol: SASL_SSL
+        sasl.mechanism: SCRAM-SHA-256
+        sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="ivan1" password="ivan1-secret";
+        ssl.endpoint.identification.algorithm: ""
+        ssl.truststore.location: "../01-ssl-certificate/server.truststore.jks"
+        ssl.truststore.password: "kafkapwd"
+        ssl.keystore.location: "../01-ssl-certificate/server.keystore.jks"
+        ssl.keystore.password: "kafkapwd"
+        ssl.key.password: "kafkapwd"
+
+
+
